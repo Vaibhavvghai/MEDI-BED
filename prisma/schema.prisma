@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum BedStatus {
+  AVAILABLE
+  RESERVED
+  OCCUPIED
+}
+
+enum Role {
+  ADMIN
+  DOCTOR
+  PATIENT
+}
+
+enum WardType {
+  ICU
+  GENERAL
+  PRIVATE
+  SEMI_PRIVATE
+  EMERGENCY
+}
+
+enum BookingStatus {
+  ACTIVE
+  DISCHARGED
+  CANCELLED
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model Hospital {
+  id         Int      @id @default(autoincrement())
+  name       String
+  city       String
+  state      String
+  address    String
+  phone      String
+  totalBeds  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  beds    Bed[]
+  doctors Doctor[]
+  admins  Admin[]
+
+  @@map("hospitals")
+}
+
+model Bed {
+  id         Int       @id @default(autoincrement())
+  bedNumber  String
+  wardType   WardType
+  status     BedStatus @default(AVAILABLE)
+  floor      Int
+  hospitalId Int
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  hospital    Hospital     @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  bedBookings BedBooking[]
+
+  @@unique([hospitalId, bedNumber])
+  @@map("beds")
+}
+
+model Admin {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(ADMIN)
+  hospitalId   Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@map("admins")
+}
+
+model Doctor {
+  id         Int      @id @default(autoincrement())
+  name       String
+  email      String   @unique
+  specialty  String
+  schedule   String
+  phone      String
+  hospitalId Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  hospital      Hospital       @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  bedBookings   BedBooking[]
+  prescriptions Prescription[]
+
+  @@map("doctors")
+}
+
+model Patient {
+  id          Int      @id @default(autoincrement())
+  name        String
+  email       String   @unique
+  phone       String
+  privacyCode String   @db.VarChar(3)
+  bloodType   String
+  dateOfBirth DateTime
+  role        Role     @default(PATIENT)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bedBookings   BedBooking[]
+  prescriptions Prescription[]
+
+  @@map("patients")
+}
+
+model BedBooking {
+  id            Int           @id @default(autoincrement())
+  admissionDate DateTime
+  dischargeDate DateTime?
+  status        BookingStatus @default(ACTIVE)
+  bedId         Int
+  patientId     Int
+  doctorId      Int
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  bed     Bed     @relation(fields: [bedId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor  Doctor  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@map("bed_bookings")
+}
+
+model Prescription {
+  id           Int      @id @default(autoincrement())
+  medication   String
+  dosage       String
+  instructions String
+  date         DateTime
+  patientId    Int
+  doctorId     Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor  Doctor  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@map("prescriptions")
+}
