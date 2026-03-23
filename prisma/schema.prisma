@@ -3,36 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
-}
-
-// ─── Enums ───────────────────────────────────────────────────────────────────
-
-enum BedStatus {
-  AVAILABLE
-  RESERVED
-  OCCUPIED
-}
-
-enum Role {
-  ADMIN
-  DOCTOR
-  PATIENT
-}
-
-enum WardType {
-  ICU
-  GENERAL
-  PRIVATE
-  SEMI_PRIVATE
-  EMERGENCY
-}
-
-enum BookingStatus {
-  ACTIVE
-  DISCHARGED
-  CANCELLED
 }
 
 // ─── Models ──────────────────────────────────────────────────────────────────
@@ -58,8 +30,8 @@ model Hospital {
 model Bed {
   id         Int       @id @default(autoincrement())
   bedNumber  String
-  wardType   WardType
-  status     BedStatus @default(AVAILABLE)
+  wardType   String
+  status     String    @default("AVAILABLE")
   floor      Int
   hospitalId Int
   createdAt  DateTime  @default(now())
@@ -77,7 +49,7 @@ model Admin {
   name         String
   email        String   @unique
   passwordHash String
-  role         Role     @default(ADMIN)
+  role         String   @default("ADMIN")
   hospitalId   Int
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -101,6 +73,7 @@ model Doctor {
   hospital      Hospital       @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
   bedBookings   BedBooking[]
   prescriptions Prescription[]
+  appointments  Appointment[]
 
   @@map("doctors")
 }
@@ -110,35 +83,55 @@ model Patient {
   name        String
   email       String   @unique
   phone       String
-  privacyCode String   @db.VarChar(3)
+  privacyCode String
   bloodType   String
   dateOfBirth DateTime
-  role        Role     @default(PATIENT)
+  role        String   @default("PATIENT")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   bedBookings   BedBooking[]
   prescriptions Prescription[]
+  appointments  Appointment[]
 
   @@map("patients")
 }
 
 model BedBooking {
-  id            Int           @id @default(autoincrement())
+  id            Int       @id @default(autoincrement())
   admissionDate DateTime
   dischargeDate DateTime?
-  status        BookingStatus @default(ACTIVE)
+  status        String    @default("ACTIVE")
   bedId         Int
   patientId     Int
   doctorId      Int
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   bed     Bed     @relation(fields: [bedId], references: [id], onDelete: Cascade)
   patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
   doctor  Doctor  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
 
   @@map("bed_bookings")
+}
+
+model Appointment {
+  id              Int      @id @default(autoincrement())
+  patientId       Int
+  doctorId        Int
+  specialty       String
+  date            DateTime
+  status          String   @default("PENDING") // PENDING, ACCEPTED, REJECTED, COMPLETED
+  reason          String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  patient         Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor          Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  prescriptions   Prescription[]
+  messages        Message[]
+
+  @@map("appointments")
 }
 
 model Prescription {
@@ -149,11 +142,26 @@ model Prescription {
   date         DateTime
   patientId    Int
   doctorId     Int
+  appointmentId Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  doctor  Doctor  @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  patient     Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor      Doctor       @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
 
   @@map("prescriptions")
+}
+
+model Message {
+  id            Int      @id @default(autoincrement())
+  content       String
+  senderId      Int
+  senderRole    String   // "PATIENT" or "DOCTOR"
+  appointmentId Int
+  createdAt     DateTime @default(now())
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
 }

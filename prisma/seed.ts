@@ -1,4 +1,4 @@
-import { PrismaClient, WardType, BedStatus, BookingStatus } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { faker } from '@faker-js/faker';
 
 const prisma = new PrismaClient();
@@ -34,7 +34,7 @@ const SPECIALTIES = [
 
 const BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
-const WARD_TYPES: WardType[] = ['ICU', 'GENERAL', 'PRIVATE', 'SEMI_PRIVATE', 'EMERGENCY'];
+const WARD_TYPES = ['ICU', 'GENERAL', 'PRIVATE', 'SEMI_PRIVATE', 'EMERGENCY'];
 
 const SCHEDULES = [
   'Mon-Fri 9AM-5PM', 'Mon-Fri 10AM-6PM', 'Mon-Sat 8AM-2PM',
@@ -129,7 +129,7 @@ async function seedBeds(hospitalIds: number[]): Promise<number[]> {
         bedsBatch.push({
           bedNumber: `${wardType.substring(0, 3)}-${String(b + 1).padStart(3, '0')}`,
           wardType,
-          status: pickRandom(['AVAILABLE', 'AVAILABLE', 'AVAILABLE', 'RESERVED', 'OCCUPIED'] as BedStatus[]),
+          status: pickRandom(['AVAILABLE', 'AVAILABLE', 'AVAILABLE', 'RESERVED', 'OCCUPIED']),
           floor: Math.floor(b / 20) + 1,
           hospitalId,
         });
@@ -256,7 +256,7 @@ async function seedBedBookings(
     bookings.push({
       admissionDate,
       dischargeDate: isActive ? null : faker.date.soon({ days: 14, refDate: admissionDate }),
-      status: isActive ? 'ACTIVE' : ('DISCHARGED' as BookingStatus),
+      status: isActive ? 'ACTIVE' : 'DISCHARGED',
       bedId,
       patientId: pickRandom(patientIds),
       doctorId: pickRandom(doctorIds),
